@@ -1,0 +1,11 @@
+name = "pet-app-api"
+main = "src/index.ts"
+compatibility_date = "2026-05-22"
+
+[vars]
+APP_ENV = "local"
+
+# Set these with wrangler secrets in real environments:
+# wrangler secret put SUPABASE_URL
+# wrangler secret put SUPABASE_ANON_KEY
+# wrangler secret put SUPABASE_SERVICE_ROLE_KEY
