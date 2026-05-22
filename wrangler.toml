@@ -1,4 +1,4 @@
-name = "pet-app-api"
+name = "pet-app"
 main = "backend/src/index.ts"
 compatibility_date = "2026-05-22"
 
