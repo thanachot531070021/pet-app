@@ -1,0 +1,9 @@
+name = "pet-app-api"
+main = "backend/src/index.ts"
+compatibility_date = "2026-05-22"
+
+[vars]
+APP_ENV = "production"
+
+# Root config for Cloudflare Workers Builds when the repo root is selected.
+# Local backend development can still use backend/wrangler.toml.

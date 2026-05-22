@@ -121,10 +121,24 @@ Payload:
 For production, set Worker secrets:
 
 ```bash
-cd backend
 wrangler secret put SUPABASE_URL
 wrangler secret put SUPABASE_ANON_KEY
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+```
+
+Cloudflare Workers Builds settings:
+
+```text
+Root directory: /
+Build command: npm install
+Deploy command: npm run deploy
+```
+
+If you prefer targeting the backend package directly, set:
+
+```text
+Root directory: backend
+Deploy command: npm run deploy
 ```
 
 Optional demo data:
