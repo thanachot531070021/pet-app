@@ -7,11 +7,7 @@ import '../shared/app_image.dart';
 import '../shared/async_state_view.dart';
 
 class NewsDetailScreen extends StatefulWidget {
-  const NewsDetailScreen({
-    required this.api,
-    required this.id,
-    super.key,
-  });
+  const NewsDetailScreen({required this.api, required this.id, super.key});
 
   final MobileApiService api;
   final String id;
@@ -41,7 +37,11 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
               pinned: true,
               title: const Text('News'),
               flexibleSpace: FlexibleSpaceBar(
-                background: AppImage(url: item.coverImage, icon: Icons.article, height: 220),
+                background: AppImage(
+                  url: item.coverImage,
+                  icon: Icons.article,
+                  height: 220,
+                ),
               ),
             ),
             SliverToBoxAdapter(
@@ -52,7 +52,10 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                   children: [
                     Text(
                       item.title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 10),
                     Wrap(
@@ -60,13 +63,19 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                       children: [
                         Chip(label: Text(item.type)),
                         if (item.publishedAt != null)
-                          Chip(label: Text(DateFormat.yMMMd().format(item.publishedAt!))),
+                          Chip(
+                            label: Text(
+                              DateFormat.yMMMd().format(item.publishedAt!),
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 18),
                     Text(
                       item.content,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.45),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(height: 1.45),
                     ),
                   ],
                 ),

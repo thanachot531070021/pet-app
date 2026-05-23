@@ -3,11 +3,15 @@ import {
   Activity,
   Image,
   Building2,
+  CalendarCheck,
   CheckCircle2,
+  Copy,
   Database,
   HeartPulse,
+  KeyRound,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Plus,
   RefreshCw,
   ShieldCheck,
@@ -22,11 +26,52 @@ import type {
   AdminMembership,
   AuthUser,
   Banner,
+  BookingItem,
   DashboardStats,
   NewsItem,
   Organization,
+  ReviewItem,
   ServiceItem,
 } from './types';
+
+const testAccounts = [
+  {
+    section: 'System Admin',
+    label: 'Super Admin',
+    email: 'admin@example.com',
+    password: 'Admin@123456',
+    role: 'super_admin',
+    scope: 'Full system access',
+    url: 'https://pet-app-admin.pages.dev/',
+  },
+  {
+    section: 'Organization Admin',
+    label: 'Shop Admin',
+    email: 'shop-admin@example.com',
+    password: 'Shop@123456',
+    role: 'shop_admin',
+    scope: 'Happy Paws Shop',
+    url: 'https://pet-app-admin.pages.dev/',
+  },
+  {
+    section: 'Organization Admin',
+    label: 'Clinic Admin',
+    email: 'clinic-admin@example.com',
+    password: 'Clinic@123456',
+    role: 'clinic_admin',
+    scope: 'Care Pet Clinic',
+    url: 'https://pet-app-admin.pages.dev/',
+  },
+  {
+    section: 'Mobile User',
+    label: 'Pet Owner',
+    email: 'user@example.com',
+    password: 'User@123456',
+    role: 'user',
+    scope: 'Mobile favorites, reviews, and bookings',
+    url: 'Mobile app',
+  },
+];
 
 type Tab =
   | 'dashboard'
@@ -39,7 +84,9 @@ type Tab =
   | 'org-dashboard'
   | 'profile'
   | 'services'
-  | 'own-news';
+  | 'own-news'
+  | 'reviews'
+  | 'bookings';
 
 type LoadState = {
   dashboard?: DashboardStats;
@@ -51,6 +98,8 @@ type LoadState = {
   logs: ActivityLog[];
   adminProfile?: Organization;
   services: ServiceItem[];
+  reviews: ReviewItem[];
+  bookings: BookingItem[];
 };
 
 const tokenKey = 'pet-admin-token';
@@ -63,9 +112,26 @@ const emptyData: LoadState = {
   banners: [],
   logs: [],
   services: [],
+  reviews: [],
+  bookings: [],
 };
 
+function searchableText(...values: unknown[]) {
+  return values
+    .filter((value) => value !== null && value !== undefined)
+    .join(' ')
+    .toLowerCase();
+}
+
+function includesSearch(text: string, search: string) {
+  return text.includes(search.trim().toLowerCase());
+}
+
 function App() {
+  if (window.location.hash === '#/users') {
+    return <UsersPage />;
+  }
+
   const [token, setToken] = useState(() => localStorage.getItem(tokenKey));
   const [user, setUser] = useState<AuthUser | null>(null);
   const [tab, setTab] = useState<Tab>('dashboard');
@@ -103,16 +169,20 @@ function App() {
           logs: logs.items,
         });
       } else {
-        const [adminProfile, services, news] = await Promise.all([
+        const [adminProfile, services, news, reviews, bookings] = await Promise.all([
           api.adminProfile(currentToken),
           api.adminServices(currentToken),
           api.news(currentToken),
+          api.adminReviews(currentToken),
+          api.adminBookings(currentToken),
         ]);
         setData({
           ...emptyData,
           adminProfile,
           services: services.items,
           news: news.items,
+          reviews: reviews.items,
+          bookings: bookings.items,
         });
         setTab((current) =>
           ['dashboard', 'shops', 'clinics', 'admins', 'banners', 'logs'].includes(current)
@@ -215,6 +285,12 @@ function App() {
               </NavButton>
               <NavButton icon={<Activity size={18} />} active={tab === 'own-news'} onClick={() => setTab('own-news')}>
                 News
+              </NavButton>
+              <NavButton icon={<MessageSquare size={18} />} active={tab === 'reviews'} onClick={() => setTab('reviews')}>
+                Reviews
+              </NavButton>
+              <NavButton icon={<CalendarCheck size={18} />} active={tab === 'bookings'} onClick={() => setTab('bookings')}>
+                Bookings
               </NavButton>
             </>
           )}
@@ -360,6 +436,30 @@ function App() {
             onError={setError}
           />
         )}
+
+        {tab === 'reviews' && (
+          <ReviewsPanel
+            token={token}
+            reviews={data.reviews}
+            onChanged={(text) => {
+              setMessage(text);
+              void loadAll();
+            }}
+            onError={setError}
+          />
+        )}
+
+        {tab === 'bookings' && (
+          <BookingsPanel
+            token={token}
+            bookings={data.bookings}
+            onChanged={(text) => {
+              setMessage(text);
+              void loadAll();
+            }}
+            onError={setError}
+          />
+        )}
       </main>
     </div>
   );
@@ -413,6 +513,8 @@ function ProfilePanel({
   const [form, setForm] = useState<OrganizationPayload>({
     name: profile.name,
     description: profile.description,
+    logoUrl: profile.logo_url,
+    coverUrl: profile.cover_url,
     phone: profile.phone,
     email: profile.email,
     address: profile.address,
@@ -422,6 +524,20 @@ function ProfilePanel({
     status: profile.status,
   });
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
+
+  async function uploadProfileImage(file: File, field: 'logoUrl' | 'coverUrl') {
+    setUploading(field);
+    try {
+      const upload = await api.uploadAsset(token, 'organizations', file);
+      setForm((current) => ({ ...current, [field]: upload.publicUrl }));
+      onChanged(`Uploaded ${field === 'logoUrl' ? 'logo' : 'cover'} image`);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Unable to upload image');
+    } finally {
+      setUploading(null);
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -476,6 +592,42 @@ function ProfilePanel({
         Address
         <textarea value={form.address ?? ''} onChange={(event) => setForm({ ...form, address: event.target.value })} />
       </label>
+      <div className="form-columns">
+        <label>
+          Logo URL
+          <input value={form.logoUrl ?? ''} onChange={(event) => setForm({ ...form, logoUrl: event.target.value })} />
+        </label>
+        <label>
+          Cover URL
+          <input value={form.coverUrl ?? ''} onChange={(event) => setForm({ ...form, coverUrl: event.target.value })} />
+        </label>
+        <label>
+          Upload logo
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={uploading !== null}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadProfileImage(file, 'logoUrl');
+              event.target.value = '';
+            }}
+          />
+        </label>
+        <label>
+          Upload cover
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={uploading !== null}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadProfileImage(file, 'coverUrl');
+              event.target.value = '';
+            }}
+          />
+        </label>
+      </div>
       <button className="primary-button" disabled={busy}>
         <CheckCircle2 size={16} />
         Save profile
@@ -495,14 +647,37 @@ function ServicesPanel({
   onChanged: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const [search, setSearch] = useState('');
   const [form, setForm] = useState({
     name: '',
     description: '',
+    imageUrl: '',
     price: '',
     durationMinutes: '',
     status: 'published' as ServiceItem['status'],
   });
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const visibleServices = useMemo(
+    () =>
+      services.filter((service) =>
+        includesSearch(searchableText(service.name, service.description, service.status, service.price), search),
+      ),
+    [services, search],
+  );
+
+  async function uploadServiceImage(file: File) {
+    setUploading(true);
+    try {
+      const upload = await api.uploadAsset(token, 'services', file);
+      setForm((current) => ({ ...current, imageUrl: upload.publicUrl }));
+      onChanged('Uploaded service image');
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Unable to upload image');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -511,11 +686,12 @@ function ServicesPanel({
       await api.createAdminService(token, {
         name: form.name,
         description: form.description || null,
+        imageUrl: form.imageUrl || null,
         price: form.price ? Number(form.price) : null,
         durationMinutes: form.durationMinutes ? Number(form.durationMinutes) : null,
         status: form.status,
       });
-      setForm({ name: '', description: '', price: '', durationMinutes: '', status: 'published' });
+      setForm({ name: '', description: '', imageUrl: '', price: '', durationMinutes: '', status: 'published' });
       onChanged('Created service');
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Unable to create service');
@@ -531,6 +707,15 @@ function ServicesPanel({
       onChanged('Deleted service');
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Unable to delete service');
+    }
+  }
+
+  async function setStatus(id: string, status: ServiceItem['status']) {
+    try {
+      await api.updateAdminService(token, id, { status });
+      onChanged(`Service marked ${status}`);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Unable to update service');
     }
   }
 
@@ -550,6 +735,23 @@ function ServicesPanel({
           <textarea
             value={form.description}
             onChange={(event) => setForm({ ...form, description: event.target.value })}
+          />
+        </label>
+        <label>
+          Image URL
+          <input value={form.imageUrl} onChange={(event) => setForm({ ...form, imageUrl: event.target.value })} />
+        </label>
+        <label>
+          Upload image
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={uploading}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadServiceImage(file);
+              event.target.value = '';
+            }}
           />
         </label>
         <div className="split-row">
@@ -592,7 +794,10 @@ function ServicesPanel({
       <section className="table-panel">
         <div className="panel-heading">
           <h2>Services</h2>
-          <span>{services.length} records</span>
+          <span>{visibleServices.length} records</span>
+        </div>
+        <div className="table-tools">
+          <input placeholder="Search services" value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
         <table>
           <thead>
@@ -605,7 +810,7 @@ function ServicesPanel({
             </tr>
           </thead>
           <tbody>
-            {services.map((service) => (
+            {visibleServices.map((service) => (
               <tr key={service.id}>
                 <td>
                   <strong>{service.name}</strong>
@@ -616,14 +821,20 @@ function ServicesPanel({
                 </td>
                 <td>{service.price ?? '-'}</td>
                 <td>{service.duration_minutes ?? '-'}</td>
-                <td className="actions">
+                <td className="actions wide-actions">
+                  <button className="secondary-button" onClick={() => void setStatus(service.id, 'published')}>
+                    Publish
+                  </button>
+                  <button className="secondary-button" onClick={() => void setStatus(service.id, 'draft')}>
+                    Draft
+                  </button>
                   <button className="icon-button danger" onClick={() => void remove(service.id)} title="Delete" aria-label="Delete">
                     <Trash2 size={16} />
                   </button>
                 </td>
               </tr>
             ))}
-            {services.length === 0 && <EmptyRow columns={5} />}
+            {visibleServices.length === 0 && <EmptyRow columns={5} />}
           </tbody>
         </table>
       </section>
@@ -644,13 +855,36 @@ function NewsPanel({
   onChanged: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const [search, setSearch] = useState('');
   const [form, setForm] = useState({
     title: '',
     content: '',
+    coverImage: '',
     type: 'global' as NewsItem['type'],
     status: 'published' as NewsItem['status'],
   });
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const visibleNews = useMemo(
+    () =>
+      news.filter((item) =>
+        includesSearch(searchableText(item.title, item.content, item.type, item.status), search),
+      ),
+    [news, search],
+  );
+
+  async function uploadCoverImage(file: File) {
+    setUploading(true);
+    try {
+      const upload = await api.uploadAsset(token, 'news', file);
+      setForm((current) => ({ ...current, coverImage: upload.publicUrl }));
+      onChanged('Uploaded news cover');
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Unable to upload image');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -658,10 +892,11 @@ function NewsPanel({
     try {
       await api.createNews(token, {
         ...form,
+        coverImage: form.coverImage || null,
         organizationId,
         publishedAt: form.status === 'published' ? new Date().toISOString() : null,
       });
-      setForm({ title: '', content: '', type: 'global', status: 'published' });
+      setForm({ title: '', content: '', coverImage: '', type: 'global', status: 'published' });
       onChanged('Created news');
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Unable to create news');
@@ -677,6 +912,18 @@ function NewsPanel({
       onChanged('Deleted news');
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Unable to delete news');
+    }
+  }
+
+  async function setStatus(item: NewsItem, status: NewsItem['status']) {
+    try {
+      await api.updateNews(token, item.id, {
+        status,
+        publishedAt: status === 'published' ? new Date().toISOString() : item.published_at,
+      });
+      onChanged(`News marked ${status}`);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Unable to update news');
     }
   }
 
@@ -697,6 +944,23 @@ function NewsPanel({
             value={form.content}
             onChange={(event) => setForm({ ...form, content: event.target.value })}
             required
+          />
+        </label>
+        <label>
+          Cover image URL
+          <input value={form.coverImage} onChange={(event) => setForm({ ...form, coverImage: event.target.value })} />
+        </label>
+        <label>
+          Upload cover
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={uploading}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadCoverImage(file);
+              event.target.value = '';
+            }}
           />
         </label>
         <div className="split-row">
@@ -732,7 +996,10 @@ function NewsPanel({
       <section className="table-panel">
         <div className="panel-heading">
           <h2>News</h2>
-          <span>{news.length} records</span>
+          <span>{visibleNews.length} records</span>
+        </div>
+        <div className="table-tools">
+          <input placeholder="Search news" value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
         <table>
           <thead>
@@ -744,7 +1011,7 @@ function NewsPanel({
             </tr>
           </thead>
           <tbody>
-            {news.map((item) => (
+            {visibleNews.map((item) => (
               <tr key={item.id}>
                 <td>
                   <strong>{item.title}</strong>
@@ -754,14 +1021,20 @@ function NewsPanel({
                 <td>
                   <span className={`pill ${item.status}`}>{item.status}</span>
                 </td>
-                <td className="actions">
+                <td className="actions wide-actions">
+                  <button className="secondary-button" onClick={() => void setStatus(item, 'published')}>
+                    Publish
+                  </button>
+                  <button className="secondary-button" onClick={() => void setStatus(item, 'draft')}>
+                    Draft
+                  </button>
                   <button className="icon-button danger" onClick={() => void remove(item.id)} title="Delete" aria-label="Delete">
                     <Trash2 size={16} />
                   </button>
                 </td>
               </tr>
             ))}
-            {news.length === 0 && <EmptyRow columns={4} />}
+            {visibleNews.length === 0 && <EmptyRow columns={4} />}
           </tbody>
         </table>
       </section>
@@ -780,6 +1053,7 @@ function BannersPanel({
   onChanged: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const [search, setSearch] = useState('');
   const [form, setForm] = useState({
     title: '',
     imageUrl: '',
@@ -789,6 +1063,32 @@ function BannersPanel({
     status: 'active' as Banner['status'],
   });
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const visibleBanners = useMemo(
+    () =>
+      banners.filter((banner) =>
+        includesSearch(searchableText(banner.title, banner.image_url, banner.status, banner.link_type, banner.link_value), search),
+      ),
+    [banners, search],
+  );
+
+  async function uploadImage(file: File) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      onError('Use a JPEG, PNG, or WebP image');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const upload = await api.uploadAsset(token, 'banners', file);
+      setForm((current) => ({ ...current, imageUrl: upload.publicUrl }));
+      onChanged('Uploaded banner image');
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Unable to upload image');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -818,6 +1118,15 @@ function BannersPanel({
     }
   }
 
+  async function setStatus(id: string, status: Banner['status']) {
+    try {
+      await api.updateBanner(token, id, { status });
+      onChanged(`Banner marked ${status}`);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Unable to update banner');
+    }
+  }
+
   return (
     <div className="content-grid">
       <form className="form-panel" onSubmit={submit}>
@@ -836,6 +1145,19 @@ function BannersPanel({
             value={form.imageUrl}
             onChange={(event) => setForm({ ...form, imageUrl: event.target.value })}
             required
+          />
+        </label>
+        <label>
+          Upload image
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={uploading}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadImage(file);
+              event.target.value = '';
+            }}
           />
         </label>
         <div className="split-row">
@@ -876,7 +1198,10 @@ function BannersPanel({
       <section className="table-panel">
         <div className="panel-heading">
           <h2>Banners</h2>
-          <span>{banners.length} records</span>
+          <span>{visibleBanners.length} records</span>
+        </div>
+        <div className="table-tools">
+          <input placeholder="Search banners" value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
         <table>
           <thead>
@@ -888,7 +1213,7 @@ function BannersPanel({
             </tr>
           </thead>
           <tbody>
-            {banners.map((item) => (
+            {visibleBanners.map((item) => (
               <tr key={item.id}>
                 <td>
                   <strong>{item.title}</strong>
@@ -898,14 +1223,20 @@ function BannersPanel({
                   <span className={`pill ${item.status}`}>{item.status}</span>
                 </td>
                 <td>{item.position}</td>
-                <td className="actions">
+                <td className="actions wide-actions">
+                  <button className="secondary-button" onClick={() => void setStatus(item.id, 'active')}>
+                    Active
+                  </button>
+                  <button className="secondary-button" onClick={() => void setStatus(item.id, 'inactive')}>
+                    Inactive
+                  </button>
                   <button className="icon-button danger" onClick={() => void remove(item.id)} title="Delete" aria-label="Delete">
                     <Trash2 size={16} />
                   </button>
                 </td>
               </tr>
             ))}
-            {banners.length === 0 && <EmptyRow columns={4} />}
+            {visibleBanners.length === 0 && <EmptyRow columns={4} />}
           </tbody>
         </table>
       </section>
@@ -944,6 +1275,181 @@ function LogsPanel({ logs }: { logs: ActivityLog[] }) {
             </tr>
           ))}
           {logs.length === 0 && <EmptyRow columns={4} />}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function ReviewsPanel({
+  token,
+  reviews,
+  onChanged,
+  onError,
+}: {
+  token: string;
+  reviews: ReviewItem[];
+  onChanged: (message: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const visibleReviews = useMemo(
+    () =>
+      reviews.filter((review) =>
+        includesSearch(
+          searchableText(review.users?.full_name, review.users?.email, review.rating, review.comment, review.status),
+          search,
+        ),
+      ),
+    [reviews, search],
+  );
+
+  async function setStatus(id: string, status: ReviewItem['status']) {
+    try {
+      await api.updateReviewStatus(token, id, status);
+      onChanged(`Review marked ${status}`);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Unable to update review');
+    }
+  }
+
+  return (
+    <section className="table-panel">
+      <div className="panel-heading">
+        <h2>Review Moderation</h2>
+        <span>{visibleReviews.length} records</span>
+      </div>
+      <div className="table-tools">
+        <input placeholder="Search reviews" value={search} onChange={(event) => setSearch(event.target.value)} />
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Reviewer</th>
+            <th>Rating</th>
+            <th>Comment</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {visibleReviews.map((review) => (
+            <tr key={review.id}>
+              <td>
+                <strong>{review.users?.full_name ?? review.users?.email ?? 'Mobile user'}</strong>
+                <small>{new Date(review.created_at).toLocaleString()}</small>
+              </td>
+              <td>{review.rating}/5</td>
+              <td>
+                <small>{review.comment ?? '-'}</small>
+              </td>
+              <td>
+                <span className={`pill ${review.status}`}>{review.status}</span>
+              </td>
+              <td className="actions wide-actions">
+                <button className="secondary-button" onClick={() => void setStatus(review.id, 'published')}>
+                  Publish
+                </button>
+                <button className="secondary-button" onClick={() => void setStatus(review.id, 'hidden')}>
+                  Hide
+                </button>
+              </td>
+            </tr>
+          ))}
+          {visibleReviews.length === 0 && <EmptyRow columns={5} />}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function BookingsPanel({
+  token,
+  bookings,
+  onChanged,
+  onError,
+}: {
+  token: string;
+  bookings: BookingItem[];
+  onChanged: (message: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const visibleBookings = useMemo(
+    () =>
+      bookings.filter((booking) =>
+        includesSearch(
+          searchableText(
+            booking.users?.full_name,
+            booking.users?.email,
+            booking.users?.phone,
+            booking.services?.name,
+            booking.note,
+            booking.status,
+          ),
+          search,
+        ),
+      ),
+    [bookings, search],
+  );
+
+  async function setStatus(id: string, status: BookingItem['status']) {
+    try {
+      await api.updateBookingStatus(token, id, status);
+      onChanged(`Booking marked ${status}`);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Unable to update booking');
+    }
+  }
+
+  return (
+    <section className="table-panel">
+      <div className="panel-heading">
+        <h2>Booking Management</h2>
+        <span>{visibleBookings.length} records</span>
+      </div>
+      <div className="table-tools">
+        <input placeholder="Search bookings" value={search} onChange={(event) => setSearch(event.target.value)} />
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Service</th>
+            <th>Schedule</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {visibleBookings.map((booking) => (
+            <tr key={booking.id}>
+              <td>
+                <strong>{booking.users?.full_name ?? booking.users?.email ?? 'Mobile user'}</strong>
+                <small>{booking.note ?? booking.users?.phone ?? booking.id}</small>
+              </td>
+              <td>
+                <strong>{booking.services?.name ?? '-'}</strong>
+                <small>{booking.services?.price ?? '-'}</small>
+              </td>
+              <td>{new Date(booking.scheduled_at).toLocaleString()}</td>
+              <td>
+                <span className={`pill ${booking.status}`}>{booking.status}</span>
+              </td>
+              <td className="actions wide-actions">
+                <button className="secondary-button" onClick={() => void setStatus(booking.id, 'confirmed')}>
+                  Confirm
+                </button>
+                <button className="secondary-button" onClick={() => void setStatus(booking.id, 'completed')}>
+                  Complete
+                </button>
+                <button className="secondary-button" onClick={() => void setStatus(booking.id, 'cancelled')}>
+                  Cancel
+                </button>
+              </td>
+            </tr>
+          ))}
+          {visibleBookings.length === 0 && <EmptyRow columns={5} />}
         </tbody>
       </table>
     </section>
@@ -1019,9 +1525,109 @@ function LoginScreen({
           <Database size={15} />
           API database: {apiReady}
         </div>
+
+        <a className="users-link" href="#/users">
+          <Users size={15} />
+          View test users
+        </a>
       </form>
     </div>
   );
+}
+
+function UsersPage() {
+  const [copied, setCopied] = useState<string | null>(null);
+  const sections = [...new Set(testAccounts.map((account) => account.section))];
+
+  async function copyText(label: string, text: string) {
+    await navigator.clipboard.writeText(text);
+    setCopied(label);
+    window.setTimeout(() => setCopied(null), 1600);
+  }
+
+  const allAccountsText = testAccounts.map(formatAccount).join('\n\n');
+
+  return (
+    <main className="users-page">
+      <header className="users-hero">
+        <div className="users-mark">
+          <KeyRound size={26} />
+        </div>
+        <div>
+          <h1>Test Users</h1>
+          <p>Development accounts for Pet Platform Admin.</p>
+        </div>
+        <button className="secondary-button" onClick={() => void copyText('all users', allAccountsText)}>
+          <Copy size={16} />
+          Copy all
+        </button>
+      </header>
+
+      {copied && <Notice tone="success" text={`Copied ${copied}`} onClose={() => setCopied(null)} />}
+
+      <div className="user-sections">
+        {sections.map((section) => (
+          <section className="users-section" key={section}>
+            <div className="panel-heading">
+              <h2>{section}</h2>
+              <span>{testAccounts.filter((account) => account.section === section).length} accounts</span>
+            </div>
+            <div className="account-grid">
+              {testAccounts
+                .filter((account) => account.section === section)
+                .map((account) => (
+                  <article className="account-card" key={account.email}>
+                    <div>
+                      <span className="pill">{account.role}</span>
+                      <h3>{account.label}</h3>
+                      <p>{account.scope}</p>
+                    </div>
+                    <dl>
+                      <div>
+                        <dt>Email</dt>
+                        <dd>{account.email}</dd>
+                      </div>
+                      <div>
+                        <dt>Password</dt>
+                        <dd>{account.password}</dd>
+                      </div>
+                    </dl>
+                    <div className="account-actions">
+                      <button className="secondary-button" onClick={() => void copyText(account.label, formatAccount(account))}>
+                        <Copy size={16} />
+                        Copy user
+                      </button>
+                      <button
+                        className="secondary-button"
+                        onClick={() => void copyText(`${account.label} email`, account.email)}
+                      >
+                        <Copy size={16} />
+                        Email
+                      </button>
+                      <button
+                        className="secondary-button"
+                        onClick={() => void copyText(`${account.label} password`, account.password)}
+                      >
+                        <Copy size={16} />
+                        Password
+                      </button>
+                    </div>
+                  </article>
+                ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <footer className="users-footer">
+        <a href="#">Back to login</a>
+      </footer>
+    </main>
+  );
+}
+
+function formatAccount(account: (typeof testAccounts)[number]) {
+  return `${account.label}\nURL: ${account.url}\nEmail: ${account.email}\nPassword: ${account.password}\nRole: ${account.role}\nScope: ${account.scope}`;
 }
 
 function DashboardPanel({
@@ -1067,12 +1673,31 @@ function OrganizationPanel({
   onChanged: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const [search, setSearch] = useState('');
   const [form, setForm] = useState<OrganizationPayload>({
     name: '',
     status: 'active',
   });
   const [busy, setBusy] = useState(false);
   const label = type === 'shop' ? 'shop' : 'clinic';
+  const visibleItems = useMemo(
+    () =>
+      items.filter((item) =>
+        includesSearch(
+          searchableText(
+            item.name,
+            item.status,
+            item.phone,
+            item.email,
+            item.address,
+            item.province,
+            item.district,
+          ),
+          search,
+        ),
+      ),
+    [items, search],
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -1097,6 +1722,16 @@ function OrganizationPanel({
       onChanged(`Deleted ${label}`);
     } catch (err) {
       onError(err instanceof Error ? err.message : `Unable to delete ${label}`);
+    }
+  }
+
+  async function setStatus(id: string, status: Organization['status']) {
+    try {
+      if (type === 'shop') await api.updateShop(token, id, { status });
+      else await api.updateClinic(token, id, { status });
+      onChanged(`Updated ${label} status`);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : `Unable to update ${label}`);
     }
   }
 
@@ -1148,9 +1783,12 @@ function OrganizationPanel({
       <section className="table-panel">
         <div className="panel-heading">
           <h2>{type === 'shop' ? 'Shops' : 'Clinics'}</h2>
-          <span>{items.length} records</span>
+          <span>{visibleItems.length} records</span>
         </div>
-        <OrganizationTable items={items} onDelete={remove} />
+        <div className="table-tools">
+          <input placeholder={`Search ${label}s`} value={search} onChange={(event) => setSearch(event.target.value)} />
+        </div>
+        <OrganizationTable items={visibleItems} onDelete={remove} onStatusChange={setStatus} />
       </section>
     </div>
   );
@@ -1169,6 +1807,7 @@ function AdminsPanel({
   onChanged: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const [search, setSearch] = useState('');
   const firstOrg = organizations[0]?.id ?? '';
   const [form, setForm] = useState({
     email: '',
@@ -1189,6 +1828,22 @@ function AdminsPanel({
   const selectedOrg = useMemo(
     () => organizations.find((org) => org.id === form.organizationId),
     [organizations, form.organizationId],
+  );
+  const visibleAdmins = useMemo(
+    () =>
+      admins.filter((admin) =>
+        includesSearch(
+          searchableText(
+            admin.users?.full_name,
+            admin.users?.email,
+            admin.users?.role,
+            admin.organizations?.name,
+            admin.organizations?.type,
+          ),
+          search,
+        ),
+      ),
+    [admins, search],
   );
 
   async function submit(event: FormEvent) {
@@ -1310,7 +1965,10 @@ function AdminsPanel({
       <section className="table-panel">
         <div className="panel-heading">
           <h2>Organization admins</h2>
-          <span>{admins.length} records</span>
+          <span>{visibleAdmins.length} records</span>
+        </div>
+        <div className="table-tools">
+          <input placeholder="Search admins" value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
         <table>
           <thead>
@@ -1323,7 +1981,7 @@ function AdminsPanel({
             </tr>
           </thead>
           <tbody>
-            {admins.map((admin) => (
+            {visibleAdmins.map((admin) => (
               <tr key={admin.id}>
                 <td>{admin.users?.full_name ?? '-'}</td>
                 <td>{admin.users?.email ?? '-'}</td>
@@ -1343,7 +2001,7 @@ function AdminsPanel({
                 </td>
               </tr>
             ))}
-            {admins.length === 0 && <EmptyRow columns={5} />}
+            {visibleAdmins.length === 0 && <EmptyRow columns={5} />}
           </tbody>
         </table>
       </section>
@@ -1351,7 +2009,15 @@ function AdminsPanel({
   );
 }
 
-function OrganizationTable({ items, onDelete }: { items: Organization[]; onDelete: (id: string) => void }) {
+function OrganizationTable({
+  items,
+  onDelete,
+  onStatusChange,
+}: {
+  items: Organization[];
+  onDelete: (id: string) => void;
+  onStatusChange: (id: string, status: Organization['status']) => void;
+}) {
   return (
     <table>
       <thead>
@@ -1375,7 +2041,13 @@ function OrganizationTable({ items, onDelete }: { items: Organization[]; onDelet
             </td>
             <td>{item.phone ?? '-'}</td>
             <td>{item.email ?? '-'}</td>
-            <td className="actions">
+            <td className="actions wide-actions">
+              <button className="secondary-button" onClick={() => void onStatusChange(item.id, 'active')}>
+                Active
+              </button>
+              <button className="secondary-button" onClick={() => void onStatusChange(item.id, 'inactive')}>
+                Inactive
+              </button>
               <button className="icon-button danger" onClick={() => void onDelete(item.id)} title="Delete" aria-label="Delete">
                 <Trash2 size={16} />
               </button>
@@ -1449,6 +2121,8 @@ function titleForTab(tab: Tab) {
   if (tab === 'profile') return 'Organization Profile';
   if (tab === 'services') return 'Services';
   if (tab === 'own-news') return 'Organization News';
+  if (tab === 'reviews') return 'Review Moderation';
+  if (tab === 'bookings') return 'Booking Management';
   return 'Dashboard';
 }
 
@@ -1463,6 +2137,8 @@ function subtitleForTab(tab: Tab) {
   if (tab === 'profile') return 'Update the public information for your organization.';
   if (tab === 'services') return 'Manage services shown to mobile users.';
   if (tab === 'own-news') return 'Publish news and promotions for your organization.';
+  if (tab === 'reviews') return 'Publish or hide customer reviews.';
+  if (tab === 'bookings') return 'Confirm, complete, or cancel customer bookings.';
   return 'System overview and operational status.';
 }
 

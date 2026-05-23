@@ -50,6 +50,24 @@ export async function createService(supabase: SupabaseClient, input: ServiceInpu
   return data;
 }
 
+export async function updateService(
+  supabase: SupabaseClient,
+  id: string,
+  organizationId: string,
+  input: Partial<ServiceInput>,
+) {
+  const { data, error } = await supabase
+    .from('services')
+    .update(toServiceRecord(input))
+    .eq('id', id)
+    .eq('organization_id', organizationId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteService(supabase: SupabaseClient, id: string, organizationId: string) {
   const { error } = await supabase
     .from('services')

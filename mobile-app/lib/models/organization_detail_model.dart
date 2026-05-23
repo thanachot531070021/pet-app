@@ -15,9 +15,14 @@ class OrganizationDetailModel {
   factory OrganizationDetailModel.fromJson(Map<String, dynamic> json) {
     final services = json['services'];
     return OrganizationDetailModel(
-      organization: OrganizationModel.fromJson(json['organization'] as Map<String, dynamic>),
+      organization: OrganizationModel.fromJson(
+        json['organization'] as Map<String, dynamic>,
+      ),
       services: services is List
-          ? services.whereType<Map<String, dynamic>>().map(ServiceModel.fromJson).toList()
+          ? services
+              .whereType<Map<String, dynamic>>()
+              .map(ServiceModel.fromJson)
+              .toList()
           : const [],
       reviewCount: json['reviewCount'] as int? ?? 0,
     );

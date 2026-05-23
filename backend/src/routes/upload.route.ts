@@ -3,7 +3,6 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { AppVariables } from '../types/app';
 import type { Env } from '../types/env';
-import { createSupabaseAdmin } from '../lib/supabase';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { requireRoles } from '../middlewares/role.middleware';
 import { success } from '../utils/response';
@@ -26,29 +25,68 @@ function sanitizeFileName(fileName: string) {
     .slice(0, 120);
 }
 
+function publicAssetUrl(requestUrl: string, path: string) {
+  const url = new URL(requestUrl);
+  return `${url.origin}/api/assets/${path}`;
+}
+
+function assertImageFile(value: FormDataEntryValue | null): File {
+  if (!(value instanceof File)) {
+    throw new Error('Image file is required');
+  }
+
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(value.type)) {
+    throw new Error('Use a JPEG, PNG, or WebP image');
+  }
+
+  return value;
+}
+
 uploadRoute.post('/signed-url', zValidator('json', uploadBodySchema), async (c) => {
   const body = c.req.valid('json');
   const user = c.get('authUser');
-  const supabase = createSupabaseAdmin(c.env);
   const ownerSegment = user.role === 'super_admin' ? 'system' : user.organizationIds[0] ?? user.id;
   const path = `${body.folder}/${ownerSegment}/${crypto.randomUUID()}-${sanitizeFileName(body.fileName)}`;
 
-  const { data, error } = await supabase.storage
-    .from('public-assets')
-    .createSignedUploadUrl(path, { upsert: true });
+  return c.json(
+    success({
+      bucket: 'pet-app-assets',
+      path,
+      token: null,
+      signedUrl: null,
+      publicUrl: publicAssetUrl(c.req.url, path),
+      contentType: body.contentType,
+    }),
+    201,
+  );
+});
 
-  if (error) throw error;
+uploadRoute.post('/direct', async (c) => {
+  const user = c.get('authUser');
+  const formData = await c.req.formData();
+  const folder = z.enum(['organizations', 'banners', 'news', 'services']).parse(formData.get('folder'));
+  const file = assertImageFile(formData.get('file'));
+  const ownerSegment = user.role === 'super_admin' ? 'system' : user.organizationIds[0] ?? user.id;
+  const path = `${folder}/${ownerSegment}/${crypto.randomUUID()}-${sanitizeFileName(file.name)}`;
 
-  const { data: publicUrl } = supabase.storage.from('public-assets').getPublicUrl(path);
+  await c.env.ASSETS.put(path, file.stream(), {
+    httpMetadata: {
+      contentType: file.type,
+      cacheControl: 'public, max-age=31536000, immutable',
+    },
+    customMetadata: {
+      uploadedBy: user.id,
+      folder,
+    },
+  });
 
   return c.json(
     success({
-      bucket: 'public-assets',
+      bucket: 'pet-app-assets',
       path,
-      token: data.token,
-      signedUrl: data.signedUrl,
-      publicUrl: publicUrl.publicUrl,
-      contentType: body.contentType,
+      publicUrl: publicAssetUrl(c.req.url, path),
+      contentType: file.type,
+      size: file.size,
     }),
     201,
   );

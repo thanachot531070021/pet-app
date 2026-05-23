@@ -30,6 +30,39 @@ export async function signInWithPassword(
   };
 }
 
+export async function createMobileUser(
+  supabaseAdmin: SupabaseClient,
+  input: { email: string; password: string; fullName: string; phone?: string | null },
+) {
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    email: input.email,
+    password: input.password,
+    email_confirm: true,
+    user_metadata: {
+      full_name: input.fullName,
+      role: 'user',
+    },
+  });
+
+  if (error || !data.user) {
+    throw conflict(error?.message ?? 'Unable to create user');
+  }
+
+  const { error: profileError } = await supabaseAdmin.from('users').insert({
+    id: data.user.id,
+    email: input.email,
+    full_name: input.fullName,
+    phone: input.phone ?? null,
+    role: 'user',
+  });
+
+  if (profileError) {
+    throw conflict(profileError.message);
+  }
+
+  return data.user;
+}
+
 export async function getAuthUserFromToken(
   supabaseAdmin: SupabaseClient,
   token: string,

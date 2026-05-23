@@ -57,18 +57,27 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
-                                AppImage(url: banner.imageUrl, icon: Icons.pets, height: 156),
+                                AppImage(
+                                  url: banner.imageUrl,
+                                  icon: Icons.pets,
+                                  height: 156,
+                                ),
                                 Positioned(
                                   left: 14,
                                   right: 14,
                                   bottom: 14,
                                   child: Text(
                                     banner.title,
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                          shadows: const [Shadow(blurRadius: 12)],
-                                        ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      shadows: const [
+                                        Shadow(blurRadius: 12),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
@@ -80,7 +89,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 22),
               ],
-              _SectionHeader(title: 'Recommended shops', count: home.shops.length),
+              _SectionHeader(
+                title: 'Recommended shops',
+                count: home.shops.length,
+              ),
               const SizedBox(height: 10),
               _HorizontalOrganizations(
                 organizations: home.shops,
@@ -88,7 +100,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 type: 'shops',
               ),
               const SizedBox(height: 22),
-              _SectionHeader(title: 'Clinics nearby', count: home.clinics.length),
+              _SectionHeader(
+                title: 'Clinics nearby',
+                count: home.clinics.length,
+              ),
               const SizedBox(height: 10),
               _HorizontalOrganizations(
                 organizations: home.clinics,
@@ -96,9 +111,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 type: 'clinics',
               ),
               const SizedBox(height: 22),
-              _SectionHeader(title: 'News and promotions', count: home.news.length),
+              _SectionHeader(
+                title: 'News and promotions',
+                count: home.news.length,
+              ),
               const SizedBox(height: 10),
-              ...home.news.map((item) => _NewsTile(news: item, api: widget.api)),
+              ...home.news.map(
+                (item) => _NewsTile(news: item, api: widget.api),
+              ),
             ],
           ),
         ),
@@ -120,7 +140,9 @@ class _SectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
         ),
         Text('$count'),
@@ -161,7 +183,11 @@ class _HorizontalOrganizations extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => OrganizationDetailScreen(api: api, type: type, id: org.id),
+                    builder: (_) => OrganizationDetailScreen(
+                      api: api,
+                      type: type,
+                      id: org.id,
+                    ),
                   ),
                 ),
                 child: Padding(
@@ -169,9 +195,17 @@ class _HorizontalOrganizations extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      AppImage(url: org.coverUrl ?? org.logoUrl, icon: Icons.storefront, height: 106),
+                      AppImage(
+                        url: org.coverUrl ?? org.logoUrl,
+                        icon: Icons.storefront,
+                        height: 106,
+                      ),
                       const SizedBox(height: 10),
-                      Text(org.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(
+                        org.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         org.address ?? org.province ?? org.type,
@@ -202,12 +236,20 @@ class _NewsTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        leading: CircleAvatar(child: Text(news.type.characters.first.toUpperCase())),
+        leading: CircleAvatar(
+          child: Text(news.type.characters.first.toUpperCase()),
+        ),
         title: Text(news.title),
-        subtitle: Text(news.content, maxLines: 2, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+          news.content,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => NewsDetailScreen(api: api, id: news.id)),
+          MaterialPageRoute(
+            builder: (_) => NewsDetailScreen(api: api, id: news.id),
+          ),
         ),
       ),
     );

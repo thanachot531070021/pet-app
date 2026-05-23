@@ -17,6 +17,7 @@ GET /health/db
 
 ```text
 POST /auth/login
+POST /auth/signup
 GET  /auth/me
 POST /auth/logout
 ```
@@ -34,6 +35,17 @@ Use the returned `accessToken` as:
 
 ```text
 Authorization: Bearer ACCESS_TOKEN
+```
+
+Signup body:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "User@123456",
+  "fullName": "Pet Owner",
+  "phone": "0800000000"
+}
 ```
 
 ## Super Admin
@@ -101,7 +113,12 @@ GET    /admin/profile
 PATCH  /admin/profile
 GET    /admin/services?page=1&perPage=50
 POST   /admin/services
+PATCH  /admin/services/:id
 DELETE /admin/services/:id
+GET    /admin/reviews?page=1&perPage=50
+PATCH  /admin/reviews/:id
+GET    /admin/bookings?page=1&perPage=50
+PATCH  /admin/bookings/:id
 ```
 
 Create service body:
@@ -115,6 +132,34 @@ Create service body:
   "status": "published"
 }
 ```
+
+Update service body:
+
+```json
+{
+  "status": "draft"
+}
+```
+
+Moderate review body:
+
+```json
+{
+  "status": "published"
+}
+```
+
+Allowed review statuses: `pending`, `published`, `hidden`.
+
+Update booking body:
+
+```json
+{
+  "status": "confirmed"
+}
+```
+
+Allowed booking statuses: `pending`, `confirmed`, `cancelled`, `completed`.
 
 ## News
 
@@ -161,9 +206,32 @@ Requires `super_admin`, `shop_admin`, or `clinic_admin`.
 
 ```text
 POST /uploads/signed-url
+POST /uploads/direct
+GET  /assets/:path
 ```
 
-Body:
+`POST /uploads/direct` stores the file in Cloudflare R2 and returns a Worker-served public URL.
+
+Multipart form fields:
+
+```text
+folder=organizations|banners|news|services
+file=<JPEG, PNG, or WebP>
+```
+
+JSON response:
+
+```json
+{
+  "bucket": "pet-app-assets",
+  "path": "banners/system/file.png",
+  "publicUrl": "https://pet-app-api.thanachot-jo888.workers.dev/api/assets/banners/system/file.png",
+  "contentType": "image/png",
+  "size": 12345
+}
+```
+
+Legacy signed URL body:
 
 ```json
 {
@@ -173,7 +241,7 @@ Body:
 }
 ```
 
-The response includes `signedUrl`, `token`, `path`, and `publicUrl`. Upload the file to Supabase Storage with the signed upload URL, then save `publicUrl` in the relevant organization, banner, news, or service record.
+The legacy response includes `path` and `publicUrl`, but the current admin web uses direct R2 upload.
 
 Organization detail response includes:
 

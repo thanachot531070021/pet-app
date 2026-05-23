@@ -149,3 +149,43 @@ export type ServiceItem = {
   created_at: string;
   updated_at: string;
 };
+
+export type ReviewItem = {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  rating: number;
+  comment: string | null;
+  status: 'pending' | 'published' | 'hidden';
+  created_at: string;
+  updated_at: string;
+  users: {
+    id: string;
+    email: string | null;
+    full_name: string | null;
+  } | null;
+};
+
+export type BookingItem = {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  service_id: string | null;
+  scheduled_at: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+  users: {
+    id: string;
+    email: string | null;
+    full_name: string | null;
+    phone: string | null;
+  } | null;
+  services: {
+    id: string;
+    name: string;
+    price: number | null;
+    duration_minutes: number | null;
+  } | null;
+};

@@ -303,6 +303,17 @@ textarea:focus {
   font-size: 13px;
 }
 
+.users-link {
+  align-items: center;
+  color: #08745f;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 7px;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .status-line.ok {
   color: #08745f;
 }
@@ -400,6 +411,14 @@ textarea:focus {
   margin-bottom: 14px;
 }
 
+.table-tools {
+  margin-bottom: 12px;
+}
+
+.table-tools input {
+  max-width: 360px;
+}
+
 .panel-heading span {
   color: #697987;
   font-size: 13px;
@@ -444,6 +463,18 @@ td small {
   width: 52px;
 }
 
+.wide-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  width: auto;
+}
+
+.wide-actions .secondary-button {
+  min-height: 34px;
+  padding: 0 10px;
+}
+
 .pill {
   background: #e8f3f1;
   border-radius: 999px;
@@ -460,9 +491,18 @@ td small {
 }
 
 .pill.inactive,
-.pill.suspended {
+.pill.suspended,
+.pill.hidden,
+.pill.cancelled {
   background: #edf1f5;
   color: #596977;
+}
+
+.pill.confirmed,
+.pill.published,
+.pill.completed {
+  background: #e8f7f3;
+  color: #08745f;
 }
 
 .empty-row {
@@ -495,6 +535,117 @@ td small {
   font-weight: 800;
 }
 
+.users-page {
+  margin: 0 auto;
+  max-width: 1120px;
+  min-height: 100vh;
+  padding: 28px;
+}
+
+.users-hero,
+.users-section,
+.account-card {
+  background: #ffffff;
+  border: 1px solid #dce5eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(16, 35, 49, 0.06);
+}
+
+.users-hero {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: auto 1fr auto;
+  margin-bottom: 18px;
+  padding: 20px;
+}
+
+.users-mark {
+  align-items: center;
+  background: #1d9a8a;
+  border-radius: 8px;
+  color: #ffffff;
+  display: inline-flex;
+  height: 52px;
+  justify-content: center;
+  width: 52px;
+}
+
+.users-hero p,
+.account-card p {
+  color: #667481;
+  margin-top: 5px;
+}
+
+.user-sections {
+  display: grid;
+  gap: 18px;
+}
+
+.users-section {
+  padding: 18px;
+}
+
+.account-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+}
+
+.account-card {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.account-card h3 {
+  font-size: 20px;
+  margin: 12px 0 0;
+}
+
+.account-card dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.account-card dl div {
+  background: #f6f9fb;
+  border: 1px solid #e0e8ee;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.account-card dt {
+  color: #687986;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.account-card dd {
+  color: #17202a;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.users-footer {
+  margin-top: 18px;
+  text-align: center;
+}
+
+.users-footer a {
+  color: #08745f;
+  font-weight: 800;
+}
+
 @media (max-width: 1020px) {
   .shell {
     grid-template-columns: 1fr;
@@ -513,7 +664,8 @@ td small {
   }
 
   .content-grid,
-  .dashboard-grid {
+  .dashboard-grid,
+  .account-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -544,5 +696,14 @@ td small {
 
   table {
     min-width: 680px;
+  }
+
+  .users-page {
+    padding: 16px;
+  }
+
+  .users-hero {
+    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 }

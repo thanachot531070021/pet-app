@@ -4,12 +4,14 @@ import type {
   ApiResponse,
   AuthUser,
   Banner,
+  BookingItem,
   DashboardStats,
   ListResult,
   NewsItem,
   LoginResult,
   Organization,
   OrganizationStatus,
+  ReviewItem,
   ServiceItem,
 } from './types';
 
@@ -42,6 +44,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 export type OrganizationPayload = {
   name: string;
   description?: string | null;
+  logoUrl?: string | null;
+  coverUrl?: string | null;
   phone?: string | null;
   email?: string | null;
   address?: string | null;
@@ -49,6 +53,22 @@ export type OrganizationPayload = {
   district?: string | null;
   subdistrict?: string | null;
   status?: OrganizationStatus;
+};
+
+export type SignedUploadPayload = {
+  folder: 'organizations' | 'banners' | 'news' | 'services';
+  fileName: string;
+  contentType: 'image/jpeg' | 'image/png' | 'image/webp';
+};
+
+export type SignedUploadResult = {
+  bucket: string;
+  path: string;
+  token: string | null;
+  signedUrl: string | null;
+  publicUrl: string;
+  contentType: string;
+  size?: number;
 };
 
 export const api = {
@@ -70,6 +90,10 @@ export const api = {
     request<Organization>('/super-admin/shops', { token, method: 'POST', body }),
   createClinic: (token: string, body: OrganizationPayload) =>
     request<Organization>('/super-admin/clinics', { token, method: 'POST', body }),
+  updateShop: (token: string, id: string, body: Partial<OrganizationPayload>) =>
+    request<Organization>(`/super-admin/shops/${id}`, { token, method: 'PATCH', body }),
+  updateClinic: (token: string, id: string, body: Partial<OrganizationPayload>) =>
+    request<Organization>(`/super-admin/clinics/${id}`, { token, method: 'PATCH', body }),
   deleteShop: (token: string, id: string) =>
     request<{ deleted: true }>(`/super-admin/shops/${id}`, { token, method: 'DELETE' }),
   deleteClinic: (token: string, id: string) =>
@@ -97,11 +121,25 @@ export const api = {
       organizationId?: string | null;
       title: string;
       content: string;
+      coverImage?: string | null;
       type: 'global' | 'shop' | 'clinic' | 'promotion' | 'announcement';
       status: 'draft' | 'published' | 'archived';
       publishedAt?: string | null;
     },
   ) => request<NewsItem>('/news', { token, method: 'POST', body }),
+  updateNews: (
+    token: string,
+    id: string,
+    body: {
+      organizationId?: string | null;
+      title?: string;
+      content?: string;
+      coverImage?: string | null;
+      type?: 'global' | 'shop' | 'clinic' | 'promotion' | 'announcement';
+      status?: 'draft' | 'published' | 'archived';
+      publishedAt?: string | null;
+    },
+  ) => request<NewsItem>(`/news/${id}`, { token, method: 'PATCH', body }),
   deleteNews: (token: string, id: string) =>
     request<{ deleted: true }>(`/news/${id}`, { token, method: 'DELETE' }),
   banners: (token: string) =>
@@ -117,10 +155,43 @@ export const api = {
       status: 'active' | 'inactive';
     },
   ) => request<Banner>('/super-admin/banners', { token, method: 'POST', body }),
+  updateBanner: (
+    token: string,
+    id: string,
+    body: {
+      title?: string;
+      imageUrl?: string;
+      linkType?: string | null;
+      linkValue?: string | null;
+      position?: number;
+      status?: 'active' | 'inactive';
+    },
+  ) => request<Banner>(`/super-admin/banners/${id}`, { token, method: 'PATCH', body }),
   deleteBanner: (token: string, id: string) =>
     request<{ deleted: true }>(`/super-admin/banners/${id}`, { token, method: 'DELETE' }),
   activityLogs: (token: string) =>
     request<ListResult<ActivityLog>>('/super-admin/activity-logs?page=1&perPage=50', { token }),
+  createSignedUploadUrl: (token: string, body: SignedUploadPayload) =>
+    request<SignedUploadResult>('/uploads/signed-url', { token, method: 'POST', body }),
+  uploadAsset: async (token: string, folder: SignedUploadPayload['folder'], file: File) => {
+    const formData = new FormData();
+    formData.append('folder', folder);
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/uploads/direct`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    const payload = (await response.json()) as ApiResponse<SignedUploadResult>;
+    if (!payload.ok) {
+      throw new Error(payload.error.message);
+    }
+
+    return payload.data;
+  },
   adminDashboard: (token: string) => request<{ organizationIds: string[] }>('/admin/dashboard', { token }),
   adminProfile: (token: string) => request<Organization>('/admin/profile', { token }),
   updateAdminProfile: (token: string, body: OrganizationPayload) =>
@@ -134,9 +205,30 @@ export const api = {
       description?: string | null;
       price?: number | null;
       durationMinutes?: number | null;
+      imageUrl?: string | null;
       status: 'draft' | 'published' | 'archived';
     },
   ) => request<ServiceItem>('/admin/services', { token, method: 'POST', body }),
+  updateAdminService: (
+    token: string,
+    id: string,
+    body: {
+      name?: string;
+      description?: string | null;
+      price?: number | null;
+      durationMinutes?: number | null;
+      imageUrl?: string | null;
+      status?: 'draft' | 'published' | 'archived';
+    },
+  ) => request<ServiceItem>(`/admin/services/${id}`, { token, method: 'PATCH', body }),
   deleteAdminService: (token: string, id: string) =>
     request<{ deleted: true }>(`/admin/services/${id}`, { token, method: 'DELETE' }),
+  adminReviews: (token: string) =>
+    request<ListResult<ReviewItem>>('/admin/reviews?page=1&perPage=50', { token }),
+  updateReviewStatus: (token: string, id: string, status: ReviewItem['status']) =>
+    request<ReviewItem>(`/admin/reviews/${id}`, { token, method: 'PATCH', body: { status } }),
+  adminBookings: (token: string) =>
+    request<ListResult<BookingItem>>('/admin/bookings?page=1&perPage=50', { token }),
+  updateBookingStatus: (token: string, id: string, status: BookingItem['status']) =>
+    request<BookingItem>(`/admin/bookings/${id}`, { token, method: 'PATCH', body: { status } }),
 };

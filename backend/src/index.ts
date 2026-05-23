@@ -9,15 +9,31 @@ import { adminRoute } from './routes/admin.route';
 import { newsRoute } from './routes/news.route';
 import { mobileRoute } from './routes/mobile.route';
 import { uploadRoute } from './routes/upload.route';
-import { createSupabaseAdmin } from './lib/supabase';
+import { assetRoute } from './routes/asset.route';
+import { createSupabaseAdmin, getMissingSupabaseConfig } from './lib/supabase';
 import { failure, success } from './utils/response';
 
 const app = new Hono<{ Bindings: Env; Variables: AppVariables }>().basePath('/api');
 
+const defaultCorsOrigins = [
+  'https://pet-app-admin.pages.dev',
+  'http://localhost:5173',
+  'http://localhost:4173',
+];
+
+function allowedCorsOrigin(origin: string, env: Env) {
+  const allowed = (env.CORS_ORIGINS ?? defaultCorsOrigins.join(','))
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return allowed.includes(origin) ? origin : null;
+}
+
 app.use(
   '*',
   cors({
-    origin: '*',
+    origin: (origin, c) => allowedCorsOrigin(origin, c.env),
     allowHeaders: ['Authorization', 'Content-Type'],
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
@@ -34,6 +50,14 @@ app.get('/health', (c) =>
 );
 
 app.get('/health/db', async (c) => {
+  const missingConfig = getMissingSupabaseConfig(c.env);
+  if (missingConfig.length > 0) {
+    return c.json(
+      failure('missing_config', `Missing Worker secrets: ${missingConfig.join(', ')}`),
+      503,
+    );
+  }
+
   const supabase = createSupabaseAdmin(c.env);
   const { error } = await supabase.from('organizations').select('id', { count: 'exact', head: true });
 
@@ -50,6 +74,7 @@ app.route('/admin', adminRoute);
 app.route('/news', newsRoute);
 app.route('/mobile', mobileRoute);
 app.route('/uploads', uploadRoute);
+app.route('/assets', assetRoute);
 
 app.notFound((c) => c.json(failure('not_found', 'Route not found'), 404));
 

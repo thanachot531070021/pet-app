@@ -38,6 +38,7 @@ set name = excluded.name,
     updated_at = now();
 
 insert into public.services (
+  id,
   organization_id,
   name,
   description,
@@ -46,6 +47,7 @@ insert into public.services (
   status
 ) values
   (
+    '33333333-3333-4333-8333-333333333333',
     '11111111-1111-4111-8111-111111111111',
     'Basic grooming kit',
     'Starter set for everyday grooming.',
@@ -54,6 +56,7 @@ insert into public.services (
     'published'
   ),
   (
+    '44444444-4444-4444-8444-444444444444',
     '22222222-2222-4222-8222-222222222222',
     'Wellness check',
     'General checkup for dogs and cats.',
@@ -61,9 +64,16 @@ insert into public.services (
     30,
     'published'
   )
-on conflict do nothing;
+on conflict (id) do update
+set name = excluded.name,
+    description = excluded.description,
+    price = excluded.price,
+    duration_minutes = excluded.duration_minutes,
+    status = excluded.status,
+    updated_at = now();
 
 insert into public.news (
+  id,
   organization_id,
   title,
   content,
@@ -72,6 +82,7 @@ insert into public.news (
   published_at
 ) values
   (
+    '55555555-5555-4555-8555-555555555555',
     null,
     'Welcome to Pet Platform',
     'Browse trusted pet shops and clinics in one place.',
@@ -80,6 +91,7 @@ insert into public.news (
     now()
   ),
   (
+    '66666666-6666-4666-8666-666666666666',
     '11111111-1111-4111-8111-111111111111',
     'Grooming essentials promotion',
     'Special offer for grooming kits this month.',
@@ -87,9 +99,16 @@ insert into public.news (
     'published',
     now()
   )
-on conflict do nothing;
+on conflict (id) do update
+set title = excluded.title,
+    content = excluded.content,
+    type = excluded.type,
+    status = excluded.status,
+    published_at = excluded.published_at,
+    updated_at = now();
 
 insert into public.banners (
+  id,
   title,
   image_url,
   link_type,
@@ -98,6 +117,7 @@ insert into public.banners (
   status
 ) values
   (
+    '77777777-7777-4777-8777-777777777777',
     'Find pet care nearby',
     'https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=1200&q=80',
     'screen',
@@ -105,4 +125,11 @@ insert into public.banners (
     1,
     'active'
   )
-on conflict do nothing;
+on conflict (id) do update
+set title = excluded.title,
+    image_url = excluded.image_url,
+    link_type = excluded.link_type,
+    link_value = excluded.link_value,
+    position = excluded.position,
+    status = excluded.status,
+    updated_at = now();

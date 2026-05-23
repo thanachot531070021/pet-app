@@ -23,9 +23,13 @@ class _AppShellState extends State<AppShell> {
     final pages = [
       HomeScreen(api: widget.api),
       OrganizationListScreen(api: widget.api, type: 'shops', title: 'Shops'),
-      OrganizationListScreen(api: widget.api, type: 'clinics', title: 'Clinics'),
+      OrganizationListScreen(
+        api: widget.api,
+        type: 'clinics',
+        title: 'Clinics',
+      ),
       NewsListScreen(api: widget.api),
-      const ProfileScreen(),
+      ProfileScreen(api: widget.api),
     ];
 
     return Scaffold(
@@ -34,11 +38,31 @@ class _AppShellState extends State<AppShell> {
         selectedIndex: _index,
         onDestinationSelected: (value) => setState(() => _index = value),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'Shops'),
-          NavigationDestination(icon: Icon(Icons.local_hospital_outlined), selectedIcon: Icon(Icons.local_hospital), label: 'Clinics'),
-          NavigationDestination(icon: Icon(Icons.article_outlined), selectedIcon: Icon(Icons.article), label: 'News'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.storefront_outlined),
+            selectedIcon: Icon(Icons.storefront),
+            label: 'Shops',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.local_hospital_outlined),
+            selectedIcon: Icon(Icons.local_hospital),
+            label: 'Clinics',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.article_outlined),
+            selectedIcon: Icon(Icons.article),
+            label: 'News',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
         ],
       ),
     );

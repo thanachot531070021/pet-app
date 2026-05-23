@@ -4,6 +4,11 @@ compatibility_date = "2026-05-22"
 
 [vars]
 APP_ENV = "production"
+CORS_ORIGINS = "https://pet-app-admin.pages.dev"
+
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "pet-app-assets"
 
 # Root config for Cloudflare Workers Builds when the repo root is selected.
 # Local backend development can still use backend/wrangler.toml.

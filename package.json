@@ -10,6 +10,7 @@
     "dev:backend": "npm --workspace backend run dev",
     "build:admin": "npm --workspace admin-web run build",
     "deploy": "wrangler deploy",
+    "deploy:admin": "npm run build:admin && wrangler pages deploy admin-web/dist --project-name pet-app-admin --commit-dirty=true",
     "deploy:backend": "npm --workspace backend run deploy",
     "smoke:api": "node scripts/smoke-api.mjs",
     "typecheck": "npm --workspace backend run typecheck && npm --workspace admin-web run typecheck"

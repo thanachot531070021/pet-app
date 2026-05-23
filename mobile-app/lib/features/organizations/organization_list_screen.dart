@@ -40,12 +40,18 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
         future: _future,
         builder: (context, items) {
           final filtered = items
-              .where((item) => item.name.toLowerCase().contains(_query.toLowerCase()))
+              .where(
+                (item) =>
+                    item.name.toLowerCase().contains(_query.toLowerCase()),
+              )
               .toList();
 
           return RefreshIndicator(
             onRefresh: () async => setState(
-              () => _future = widget.api.getOrganizations(widget.type, search: _query),
+              () => _future = widget.api.getOrganizations(
+                widget.type,
+                search: _query,
+              ),
             ),
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -57,7 +63,10 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                   ),
                   onSubmitted: (value) => setState(() {
                     _query = value;
-                    _future = widget.api.getOrganizations(widget.type, search: value);
+                    _future = widget.api.getOrganizations(
+                      widget.type,
+                      search: value,
+                    );
                   }),
                 ),
                 const SizedBox(height: 14),
@@ -84,7 +93,9 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                               width: 92,
                               child: AppImage(
                                 url: item.logoUrl ?? item.coverUrl,
-                                icon: widget.type == 'clinics' ? Icons.local_hospital : Icons.storefront,
+                                icon: widget.type == 'clinics'
+                                    ? Icons.local_hospital
+                                    : Icons.storefront,
                                 height: 92,
                               ),
                             ),
@@ -95,13 +106,17 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                                 children: [
                                   Text(
                                     item.name,
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w800),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    item.description ?? item.address ?? item.province ?? item.type,
+                                    item.description ??
+                                        item.address ??
+                                        item.province ??
+                                        item.type,
                                     maxLines: 3,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -110,7 +125,8 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                                     spacing: 8,
                                     children: [
                                       Chip(label: Text(item.type)),
-                                      if (item.phone != null) Chip(label: Text(item.phone!)),
+                                      if (item.phone != null)
+                                        Chip(label: Text(item.phone!)),
                                     ],
                                   ),
                                 ],

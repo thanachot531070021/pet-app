@@ -32,7 +32,8 @@ class _NewsListScreenState extends State<NewsListScreen> {
       body: AsyncStateView<List<NewsModel>>(
         future: _future,
         builder: (context, news) => RefreshIndicator(
-            onRefresh: () async => setState(() => _future = widget.api.getNews(search: _query)),
+          onRefresh: () async =>
+              setState(() => _future = widget.api.getNews(search: _query)),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
@@ -63,7 +64,10 @@ class _NewsListScreenState extends State<NewsListScreen> {
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => NewsDetailScreen(api: widget.api, id: item.id)),
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            NewsDetailScreen(api: widget.api, id: item.id),
+                      ),
                     ),
                   ),
                 ),

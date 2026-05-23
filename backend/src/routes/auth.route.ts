@@ -4,8 +4,8 @@ import { z } from 'zod';
 import type { Env } from '../types/env';
 import type { AppVariables } from '../types/app';
 import { authMiddleware } from '../middlewares/auth.middleware';
-import { createSupabasePublic } from '../lib/supabase';
-import { signInWithPassword } from '../services/auth.service';
+import { createSupabaseAdmin, createSupabasePublic } from '../lib/supabase';
+import { createMobileUser, signInWithPassword } from '../services/auth.service';
 import { success } from '../utils/response';
 
 export const authRoute = new Hono<{ Bindings: Env; Variables: AppVariables }>();
@@ -25,6 +25,29 @@ authRoute.post(
     const session = await signInWithPassword(supabase, body.email, body.password);
 
     return c.json(success(session));
+  },
+);
+
+authRoute.post(
+  '/signup',
+  zValidator(
+    'json',
+    z.object({
+      email: z.string().email(),
+      password: z.string().min(8),
+      fullName: z.string().min(1),
+      phone: z.string().nullish(),
+    }),
+  ),
+  async (c) => {
+    const body = c.req.valid('json');
+    const supabaseAdmin = createSupabaseAdmin(c.env);
+    await createMobileUser(supabaseAdmin, body);
+
+    const supabasePublic = createSupabasePublic(c.env);
+    const session = await signInWithPassword(supabasePublic, body.email, body.password);
+
+    return c.json(success(session), 201);
   },
 );
 

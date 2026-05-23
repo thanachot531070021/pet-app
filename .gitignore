@@ -1,6 +1,7 @@
 node_modules/
 .wrangler/
 .dev.vars
+.dart_tool/
 dist/
 coverage/
 *.log

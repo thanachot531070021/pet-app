@@ -50,6 +50,54 @@ Open:
 http://localhost:5173
 ```
 
+Production admin web builds read:
+
+```text
+admin-web/.env.production
+```
+
+Current production API:
+
+```text
+https://pet-app-api.thanachot-jo888.workers.dev/api
+```
+
+Deploy the production admin web to Cloudflare Pages:
+
+```bash
+npm run deploy:admin
+```
+
+Current admin web:
+
+```text
+https://pet-app-admin.pages.dev/
+```
+
+Development test accounts:
+
+```text
+Super Admin:  admin@example.com / Admin@123456
+Shop Admin:   shop-admin@example.com / Shop@123456
+Clinic Admin: clinic-admin@example.com / Clinic@123456
+Mobile User:  user@example.com / User@123456
+```
+
+Public test users page:
+
+```text
+https://pet-app-admin.pages.dev/#/users
+```
+
+Recommended Cloudflare Pages settings if you deploy from Git:
+
+```text
+Project name: pet-app-admin
+Root directory: /
+Build command: npm run build:admin
+Build output directory: admin-web/dist
+```
+
 ## Mobile App
 
 Flutter SDK is required for local mobile runs.
@@ -125,6 +173,8 @@ wrangler secret put SUPABASE_URL
 wrangler secret put SUPABASE_ANON_KEY
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 ```
+
+Paste secret values without wrapping quotes. For example, use `https://...supabase.co`, not `"https://...supabase.co"`.
 
 Cloudflare Workers Builds settings:
 
